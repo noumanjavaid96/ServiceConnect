@@ -1,9 +1,4 @@
 import React, { useState } from "react";
-import {
-  createProfile,
-  createServiceLocation,
-  uploadWorkerDocument,
-} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +10,8 @@ import LocationSetup from "./LocationSetup";
 import PhotoUpload from "./PhotoUpload";
 import PermitsUpload from "./PermitsUpload";
 import PaymentSetup from "./PaymentSetup";
+import ServiceSetup from "./ServiceSetup";
+import PricingSetup from "./PricingSetup";
 
 interface OnboardingWizardProps {
   userType?: "worker" | "customer";
@@ -35,8 +32,27 @@ interface FormData {
     city: string;
     state: string;
     zipCode: string;
+    serviceAreas?: Array<{
+      zipCode: string;
+      radius: number;
+    }>;
   } | null;
   serviceRadius: number;
+  services: string[];
+  skills: string[];
+  pricing?: {
+    baseRate: number;
+    minimumHours: number;
+    travelFee: number;
+  };
+  availability?: {
+    workingDays: string[];
+    workingHours: {
+      start: string;
+      end: string;
+    };
+    instantBooking: boolean;
+  };
   permits: File[];
   stripeComplete: boolean;
 }
@@ -60,6 +76,8 @@ const OnboardingWizard = ({
     photo: null,
     location: null,
     serviceRadius: 20,
+    services: [],
+    skills: [],
     permits: [],
     stripeComplete: false,
   });
@@ -96,7 +114,18 @@ const OnboardingWizard = ({
         }
         break;
 
-      case 4: // Payment Setup (Workers only)
+      case 3: // Services & Skills (Workers only)
+        if (userType === "worker" && formData.services.length === 0) {
+          toast({
+            title: "Services Required",
+            description: "Please select at least one service category",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+
+      case 6: // Payment Setup (Workers only)
         if (userType === "worker" && !formData.stripeComplete) {
           toast({
             title: "Payment Setup Required",
@@ -181,7 +210,31 @@ const OnboardingWizard = ({
       ),
     },
     {
-      title: "Permits & Certifications",
+      title: "Services & Skills",
+      component: (
+        <ServiceSetup
+          selectedServices={formData.services}
+          selectedSkills={formData.skills}
+          onServiceChange={(services) => setFormData({ ...formData, services })}
+          onSkillsChange={(skills) => setFormData({ ...formData, skills })}
+          disabled={loading}
+        />
+      ),
+    },
+    {
+      title: "Pricing & Availability",
+      component: (
+        <PricingSetup
+          onPricingChange={(pricing) => setFormData({ ...formData, pricing })}
+          onAvailabilityChange={(availability) =>
+            setFormData({ ...formData, availability })
+          }
+          disabled={loading}
+        />
+      ),
+    },
+    {
+      title: "Verification",
       component: (
         <PermitsUpload
           permits={formData.permits}
